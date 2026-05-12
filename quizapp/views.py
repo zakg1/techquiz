@@ -15,8 +15,8 @@ def register(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
-        return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "User created successfully"}, status=201)
+    return Response(serializer.errors, status=400)
 
 
 @api_view(['POST'])
@@ -24,9 +24,12 @@ def login(request):
     email = request.data.get("email")
     password = request.data.get("password")
 
-    user = User.objects(email=email, password=password).first()
-
+    user = User.objects(email=email).first()
     if not user:
+        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    from django.contrib.auth.hashers import check_password
+    if not check_password(password, user.password):
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
     refresh = RefreshToken.for_user(user)
@@ -35,7 +38,8 @@ def login(request):
         "refresh": str(refresh),
         "access": str(refresh.access_token),
         "role": user.role,
-        "username": user.username
+        "username": user.username,
+        "user_id": str(user.id)   # 🔥 أضفنا الـ user_id هون
     })
 
 # Create your views here.
